@@ -1,9 +1,8 @@
-# SlothPlanner
+# BrainDump
 
+BrainDump is an AI-powered productivity app for people who have things to do but don't want to spend half their day figuring out how to do them.
 
-Sloth Planner is an AI-powered productivity app for people who have things to do but don't want to spend half their day figuring out how to do them.
-
-Dump your messy to-do list into Sloth Planner. Let AI organize the chaos, let Deadline Detective investigate your deadlines, and get a realistic plan for getting things done with less mental effort.
+Dump your messy to-do list into BrainDump. Let AI organize the chaos, let Deadline Detective investigate your deadlines, and get a realistic plan for getting things done with less mental effort.
 
 **The mission: reward laziness by eliminating unnecessary work.**
 
@@ -23,7 +22,7 @@ Stop organizing your thoughts before you write them down.
 
 ### 🕵️ 2. Deadline Detective
 
-Your deadlines leave clues. Sloth Planner investigates.
+Your deadlines leave clues. BrainDump investigates.
 
 Deadline Detective helps identify:
 
@@ -39,7 +38,7 @@ Instead of simply telling you that you're behind, it explains why a task is at r
 
 Get a plan that respects the hours you actually have.
 
-Sloth Planner considers available time, deadlines, estimated task duration, and dependencies to create a practical daily plan.
+BrainDump considers available time, deadlines, estimated task duration, and dependencies to create a practical daily plan.
 
 If everything cannot reasonably fit into your schedule, it should say so instead of pretending you can accomplish 15 hours of work in three.
 
@@ -61,7 +60,7 @@ Less overthinking. More starting.
 
 Plans change. Your productivity app shouldn't make that another problem.
 
-When you fall behind or an urgent task appears, Sloth Planner helps reorganize the remaining work while preserving completed tasks.
+When you fall behind or an urgent task appears, BrainDump helps reorganize the remaining work while preserving completed tasks.
 
 Temporal can orchestrate the multi-step planning workflow and support recovery from temporary failures.
 
@@ -74,7 +73,7 @@ MongoDB Atlas provides persistent storage for task information and planning hist
 ## 🛠️ Tech Stack
 
 | Technology | Purpose |
-|---|---|
+||--|---|
 | React | Frontend user interface |
 | JavaScript + JSX | Application logic and React components |
 | Vite | Frontend development and build tooling |
@@ -165,27 +164,13 @@ The exact directory names and scripts should match the repository as it develops
 
 ### 3. Configure environment variables
 
-Create a `.env` file in the backend directory:
-
-```env
-PORT=3000
-OLLAMA_API_KEY=your_ollama_api_key
-OLLAMA_MODEL=your_supported_cloud_model
-MONGODB_URI=your_mongodb_connection_string
-TEMPORAL_ADDRESS=your_temporal_service_address
-TEMPORAL_NAMESPACE=your_temporal_namespace
-TEMPORAL_TASK_QUEUE=task-tamer-queue
-```
-
-Use the Temporal connection settings required by your chosen Temporal deployment. Authentication credentials may also be necessary.
+Copy `server/.env.example` to `server/.env` and `client/.env.example` to `client/.env`, then fill in your own values (see the variable tables in [Deploying to Render](#-deploying-to-render)).
 
 **Important:** Never commit `.env` files, expose secrets in frontend code, or publish database credentials.
 
 ### 4. Start the application locally
 
-Start the backend API and Temporal worker using the development scripts configured in the server's `package.json`.
-
-For example, if you define a development script:
+Start the backend API (from `server/`):
 
 ```bash
 npm run dev
@@ -198,13 +183,59 @@ cd client
 npm run dev
 ```
 
-You will also need a reachable Temporal service and the necessary MongoDB Atlas network access. The frontend URL will be printed by Vite.
+You also need MongoDB Atlas network access for your machine. The frontend URL will be printed by Vite.
 
-*These are setup examples, not a claim that the scripts or Temporal worker have already been implemented.*
+## 🚀 Deploying to Render
+
+BrainDump deploys as two Render services from this one repository (a Blueprint is provided in `render.yaml`):
+
+| | Backend | Frontend |
+|---|---|---|
+| Type | Web Service (Node) | Static Site |
+| Root Directory | `server` | `client` |
+| Build Command | `npm install` | `npm install && npm run build` |
+| Start Command | `npm start` | n/a |
+| Publish Directory | n/a | `dist` |
+| Health Check Path | `/api/health` | n/a |
+
+Deploy the backend first, because the frontend needs its URL at build time.
+
+### Backend environment variables (Web Service)
+
+| Variable | Required | Notes |
+|---|---|---|
+| `MONGODB_URI` | yes | Atlas connection string. Secret. |
+| `MONGODB_DB_NAME` | yes | e.g. `sloth_planner` (the existing database name). |
+| `OLLAMA_API_KEY` | yes | Secret. Without it Brain Dump and Lazy Mode return an error. |
+| `OLLAMA_MODEL` | yes | A model name from `https://ollama.com/api/tags`. |
+| `CORS_ORIGIN` | yes | The deployed frontend URL, e.g. `https://braindump-web.onrender.com`, with no trailing slash. Comma separate several. |
+| `PORT` | no | Set by Render automatically. The server listens on `0.0.0.0:$PORT`. |
+| `OLLAMA_BASE_URL`, `OLLAMA_TIMEOUT_MS` | no | Defaults are `https://ollama.com` and `60000`. |
+| `NODE_VERSION` | recommended | `22` (the server needs Node 20.12 or newer). |
+
+### Frontend environment variable (Static Site)
+
+| Variable | Required | Notes |
+|---|---|---|
+| `VITE_API_URL` | yes | The backend URL, e.g. `https://braindump-api.onrender.com`. It is baked in at build time, so changing it needs a rebuild. Never put secrets in `VITE_` variables. |
+
+### Order of steps
+
+1. In MongoDB Atlas, allow Render to connect (Network Access). Render's outbound IPs can change, so the simplest option is `0.0.0.0/0`, protected by a strong database user password.
+2. Create the Web Service, set its variables, deploy, then open `<backend-url>/api/health`. Expect `status: "ok"` and the database reported as connected.
+3. Create the Static Site with `VITE_API_URL` set to the backend URL and deploy it.
+4. Set `CORS_ORIGIN` on the backend to the static site URL and let it redeploy.
+5. Open the frontend, then try a brain dump and save a task.
+
+### Notes
+
+- Routing uses URL hashes (`#/tasks`), so no rewrite rule is needed on the Static Site.
+- The free Web Service sleeps when idle, so the first request after a pause can take about a minute.
+- The API has no authentication or rate limiting yet. Anyone who knows the backend URL can read and change tasks and spend your Ollama quota, so treat a public deployment as a demo.
 
 ## 🎨 Styling
 
-Sloth Planner uses regular CSS alongside React.
+BrainDump uses regular CSS alongside React.
 
 The styling should reinforce the product's playful personality while keeping the task-management experience clear and easy to use.
 
@@ -231,7 +262,7 @@ No additional CSS framework is required.
 
 ## 🌱 Open-Source AI in Practice
 
-Sloth Planner explores how AI can reduce the effort required to manage everyday responsibilities.
+BrainDump explores how AI can reduce the effort required to manage everyday responsibilities.
 
 Rather than using AI only to generate text, it incorporates model inference into a practical workflow:
 
@@ -245,7 +276,7 @@ The goal is to demonstrate AI as a useful part of a working application, not sim
 
 ## 🗺️ Project Status
 
-Sloth Planner is being developed as a focused MVP.
+BrainDump is being developed as a focused MVP.
 
 Planned capabilities include AI-powered task extraction, Deadline Detective, realistic daily planning, task breakdowns, replanning, and saved task history.
 
